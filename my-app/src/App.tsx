@@ -16,7 +16,7 @@ interface Alertee {
 function App() {
   const [isAlarmTriggered, setIsAlarmTriggered] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
-  const [inputValue, setInputValue] = useState('');
+  // const [inputValue, setInputValue] = useState('');
   const [alertees, setAlertees] = useState<Alertee[]>([
     {
       name: 'Supervisor 1',
@@ -59,7 +59,7 @@ function App() {
   const handleResetAlarm = async () => {
     setIsAlarmTriggered(false);
     setTimeElapsed(0);
-    setInputValue('');
+    // setInputValue('');
     setAlertees((prev) =>
       prev.map((alertee) => ({
         ...alertee,
@@ -69,16 +69,16 @@ function App() {
     );
   };
 
-  function handleTextResponse(textResponse: string) {
-    console.log('Text response received:', textResponse);
-    if (textResponse.toLowerCase() === 'yes') {
-      const updatedAlertees = alertees;
-      updatedAlertees[0].response = 'YES';
-      setAlertees(updatedAlertees);
-    } else {
-      return;
-    }
-  }
+  // function handleTextResponse(textResponse: string) {
+  //   console.log('Text response received:', textResponse);
+  //   if (textResponse.toLowerCase() === 'yes') {
+  //     const updatedAlertees = alertees;
+  //     updatedAlertees[0].response = 'YES';
+  //     setAlertees(updatedAlertees);
+  //   } else {
+  //     return;
+  //   }
+  // }
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
