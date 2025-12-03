@@ -125,7 +125,7 @@ function App() {
                     Reset Alarm
                   </button>
 
-                  <p>Send Test Text</p>
+                  {/* <p>Send Test Text</p>
                   <input
                     onChange={(e) => setInputValue(e.target.value)}
                   ></input>
@@ -134,7 +134,7 @@ function App() {
                     className="bg-gray-600 hover:bg-gray-700 text-white font-bold text-lg py-3 px-8 rounded-lg shadow transition-all duration-300"
                   >
                     Send Text
-                  </button>
+                  </button> */}
                 </div>
 
                 <div className="w-full mt-6 animate-fade-in">
