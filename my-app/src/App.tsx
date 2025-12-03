@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import { functions, ALARM_FUNCTION_ID } from './lib/appwrite';
+import { ExecutionMethod } from 'appwrite';
 // import Timer from './components/timer';
 // import AlertTable from './components/alertTable';
 
@@ -16,6 +18,7 @@ interface Alertee {
 function App() {
   const [isAlarmTriggered, setIsAlarmTriggered] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [isSending, setIsSending] = useState(false);
   // const [inputValue, setInputValue] = useState('');
   const [alertees, setAlertees] = useState<Alertee[]>([
     {
@@ -42,9 +45,49 @@ function App() {
     };
   }, [isAlarmTriggered]);
 
+  const triggerAppwriteFunction = async (alertee: Alertee) => {
+    try {
+      // Prepare the request body with override parameters
+      const requestBody = JSON.stringify({
+        to: alertee.phone,
+        // from and body will use env defaults if not specified
+        // Optionally override them here:
+        // from: '+1234567890',
+        // body: `Alarm Triggered for ${alertee.name}. Reply 'YES' to acknowledge.`
+      });
+
+      // Execute the Appwrite function
+      const execution = await functions.createExecution(
+        ALARM_FUNCTION_ID,
+        requestBody,
+        false, // async execution (set to true if you don't need to wait)
+        '/', // path
+        ExecutionMethod.POST // HTTP method
+      );
+
+      console.log('Function execution response:', execution);
+
+      // Check if the execution was successful
+      if (execution.responseStatusCode === 200) {
+        console.log(`SMS sent successfully to ${alertee.name}`);
+        return { success: true, execution };
+      } else {
+        console.error(
+          `Failed to send SMS to ${alertee.name}:`,
+          execution.responseBody
+        );
+        return { success: false, execution };
+      }
+    } catch (error) {
+      console.error(`Error triggering function for ${alertee.name}:`, error);
+      return { success: false, error };
+    }
+  };
+
   const handleTriggerAlarm = async () => {
     setIsAlarmTriggered(true);
     setTimeElapsed(0);
+    setIsSending(true);
 
     // Reset alertees
     setAlertees((prev) =>
@@ -54,6 +97,30 @@ function App() {
         response: 'WAITING',
       }))
     );
+
+    // Send SMS to all active alertees
+    const activeAlertees = alertees.filter((a) => a.activationDelay === 0);
+
+    try {
+      // Send SMS in parallel to all active alertees
+      const results = await Promise.allSettled(
+        activeAlertees.map((alertee) => triggerAppwriteFunction(alertee))
+      );
+
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value.success) {
+          console.log(`✓ SMS sent to ${activeAlertees[index].name}`);
+        } else {
+          console.error(
+            `✗ Failed to send SMS to ${activeAlertees[index].name}`
+          );
+        }
+      });
+    } catch (error) {
+      console.error('Error sending SMS alerts:', error);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleResetAlarm = async () => {
@@ -100,9 +167,10 @@ function App() {
             {!isAlarmTriggered ? (
               <button
                 onClick={handleTriggerAlarm}
+                disabled={isSending}
                 className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-2xl py-6 px-12 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105"
               >
-                Trigger Alarm
+                {isSending ? 'Sending...' : 'Trigger Alarm'}
               </button>
             ) : (
               <>
