@@ -1,4 +1,3 @@
-
 /**
  * Appwrite Function (Node.js) entry point
  * This function sends an SMS via Twilio when triggered.
