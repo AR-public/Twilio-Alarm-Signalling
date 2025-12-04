@@ -1,13 +1,8 @@
-// Below works for triggering SMS but lacks response checking
-
 import { useState, useEffect } from 'react';
 import './App.css';
 import { functions, ALARM_FUNCTION_ID } from './lib/appwrite';
 import { ExecutionMethod } from 'appwrite';
-// import Timer from './components/timer';
-// import AlertTable from './components/alertTable';
-
-// type AlerteeResponse = '' | 'WAITING' | 'YES';
+import { Client, Databases, Query } from 'appwrite';
 
 interface Alertee {
   name: string;
@@ -21,7 +16,9 @@ function App() {
   const [isAlarmTriggered, setIsAlarmTriggered] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isSending, setIsSending] = useState(false);
-  // const [inputValue, setInputValue] = useState('');
+  const [timeAlarmTriggered, setTimeAlarmTriggered] = useState<string>(
+    new Date().toISOString()
+  );
   const [alertees, setAlertees] = useState<Alertee[]>([
     {
       name: 'Supervisor 1',
@@ -31,6 +28,39 @@ function App() {
       response: 'WAITING',
     },
   ]);
+
+  const client = new Client()
+    .setEndpoint('https://fra.cloud.appwrite.io/v1') // Your API Endpoint
+    .setProject('69162129001603cdec51'); // Project ID
+
+  const databases = new Databases(client);
+
+  async function getDbResponses() {
+    console.log('inside getDbResponses at:', timeAlarmTriggered);
+    const result = await databases.listDocuments({
+      databaseId: '69315e3800250c261f77',
+      collectionId: 'responses_table',
+      queries: [Query.createdAfter(timeAlarmTriggered)], // optional
+      // transactionId: '<TRANSACTION_ID>', // optional
+      total: false, // optional
+    });
+
+    console.log("All database values after alarm triggered:", result);
+    const allResponsesSinceAlarmTriggered = result.documents;
+
+    // if any object in allResponsesSinceAlarmTriggered has response 'YES', update alertees response state to 'YES'
+    allResponsesSinceAlarmTriggered.forEach((doc) => {
+      if (doc.response === 'YES') {
+        setAlertees((prevAlertees) =>
+          prevAlertees.map((alertee) =>
+            alertee.phone === doc.phone //this confirms the right alertee state is updated
+              ? { ...alertee, response: 'YES' }
+              : alertee
+          )
+        );
+      }
+    });
+  }
 
   // Timer effect
   useEffect(() => {
@@ -47,22 +77,46 @@ function App() {
     };
   }, [isAlarmTriggered]);
 
+  // Poll DB responses every 3 seconds while the alarm is active
+  useEffect(() => {
+    if (!isAlarmTriggered || !timeAlarmTriggered) return;
+
+    let isCancelled = false;
+
+    const run = async () => {
+      try {
+        const result = await getDbResponses();
+        if (isCancelled) return;
+
+        // Update local state as needed based on result
+        console.log('Polled responses:', result);
+      } catch (err) {
+        console.error('Polling getDbResponses failed:', err);
+      }
+    };
+
+    run();
+    const intervalId = setInterval(run, 3000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAlarmTriggered, timeAlarmTriggered]);
+
   const triggerAppwriteFunction = async (alertee: Alertee) => {
     try {
       // Prepare the request body with override parameters
       const requestBody = JSON.stringify({
         to: alertee.phone,
-        // from and body will use env defaults if not specified
-        // Optionally override them here:
-        // from: '+1234567890',
-        // body: `Alarm Triggered for ${alertee.name}. Reply 'YES' to acknowledge.`
       });
 
       // Execute the Appwrite function
       const execution = await functions.createExecution(
         ALARM_FUNCTION_ID,
         requestBody,
-        false, // async execution (set to true if you don't need to wait)
+        false, // false = async execution
         '/', // path
         ExecutionMethod.POST // HTTP method
       );
@@ -90,6 +144,7 @@ function App() {
     setIsAlarmTriggered(true);
     setTimeElapsed(0);
     setIsSending(true);
+    setTimeAlarmTriggered(new Date().toISOString());
 
     // Reset alertees
     setAlertees((prev) =>
@@ -128,7 +183,6 @@ function App() {
   const handleResetAlarm = async () => {
     setIsAlarmTriggered(false);
     setTimeElapsed(0);
-    // setInputValue('');
     setAlertees((prev) =>
       prev.map((alertee) => ({
         ...alertee,
@@ -137,17 +191,6 @@ function App() {
       }))
     );
   };
-
-  // function handleTextResponse(textResponse: string) {
-  //   console.log('Text response received:', textResponse);
-  //   if (textResponse.toLowerCase() === 'yes') {
-  //     const updatedAlertees = alertees;
-  //     updatedAlertees[0].response = 'YES';
-  //     setAlertees(updatedAlertees);
-  //   } else {
-  //     return;
-  //   }
-  // }
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -167,13 +210,15 @@ function App() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="flex flex-col items-center gap-6">
             {!isAlarmTriggered ? (
-              <button
-                onClick={handleTriggerAlarm}
-                disabled={isSending}
-                className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-2xl py-6 px-12 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSending ? 'Sending...' : 'Trigger Alarm'}
-              </button>
+              <>
+                <button
+                  onClick={handleTriggerAlarm}
+                  disabled={isSending}
+                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-2xl py-6 px-12 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSending ? 'Sending...' : 'Trigger Alarm'}
+                </button>
+              </>
             ) : (
               <>
                 <div className="text-center animate-fade-in">
@@ -194,17 +239,6 @@ function App() {
                   >
                     Reset Alarm
                   </button>
-
-                  {/* <p>Send Test Text</p>
-                  <input
-                    onChange={(e) => setInputValue(e.target.value)}
-                  ></input>
-                  <button
-                    onClick={() => handleTextResponse(inputValue)}
-                    className="bg-gray-600 hover:bg-gray-700 text-white font-bold text-lg py-3 px-8 rounded-lg shadow transition-all duration-300"
-                  >
-                    Send Text
-                  </button> */}
                 </div>
 
                 <div className="w-full mt-6 animate-fade-in">
@@ -215,7 +249,7 @@ function App() {
                           Alertees
                         </th>
                         <th className="border border-gray-300 px-6 py-3 text-left font-bold text-gray-700">
-                          Response
+                          Acknowledged
                         </th>
                       </tr>
                     </thead>
