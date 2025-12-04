@@ -1,0 +1,12 @@
+{
+  "name": "twilio-webhook",
+  "version": "1.0.0",
+  "description": "Twilio webhook handler for SMS responses",
+  "main": "twilioWebhook.cjs",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
