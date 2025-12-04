@@ -78,6 +78,8 @@ function App() {
     if (!isAlarmTriggered || !timeAlarmTriggered) return;
 
     let isCancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const run = async () => {
       try {
@@ -89,14 +91,20 @@ function App() {
       }
     };
 
-    run();
-    const intervalId = setInterval(run, 3000);
+    // Wait 5 seconds before starting the interval
+    timeoutId = setTimeout(() => {
+      // First run happens at 5s
+      run();
+      // Then keep running every 3s
+      intervalId = setInterval(run, 3000);
+    }, 5000);
 
     return () => {
       isCancelled = true;
-      clearInterval(intervalId);
+      if (timeoutId) clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAlarmTriggered, timeAlarmTriggered]);
 
   const triggerAppwriteFunction = async (alertee: Alertee) => {
