@@ -3,9 +3,9 @@
  * This webhook receives incoming SMS and stores them in Appwrite Database
  */
 
-const sdk = require('node-appwrite');
+import { Client, Databases } from 'node-appwrite';
 
-module.exports = async function (req, res) {
+export default async function (req, res) {
   try {
     // Parse Twilio's form-encoded webhook data
     const contentType = req.headers['content-type'] || '';
@@ -15,7 +15,7 @@ module.exports = async function (req, res) {
       // Parse URL-encoded body
       const body = req.body || '';
       const params = new URLSearchParams(body);
-      
+
       twilioData = {
         from: params.get('From'),
         to: params.get('To'),
@@ -30,12 +30,12 @@ module.exports = async function (req, res) {
     console.log('Received SMS:', twilioData);
 
     // Initialise Appwrite client
-    const client = new sdk.Client()
+    const client = new Client()
       .setEndpoint('https://fra.cloud.appwrite.io/v1')
       .setProject('69162129001603cdec51')
       .setKey(process.env.APPWRITE_API_KEY);
 
-    const database = new sdk.Databases(client);
+    const database = new Databases(client);
 
     // Store the response in Appwrite database
     const databaseId = process.env.DATABASE_ID;
