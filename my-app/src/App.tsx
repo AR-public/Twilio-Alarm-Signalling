@@ -310,7 +310,7 @@ function App() {
           </div>
         </div>
 
-        <div className="alarm-footer">Happy Fuel Co 🔥😇</div>
+        <div className="alarm-footer">The Happy Fuel Co 🔥😇</div>
       </div>
     </div>
   );
