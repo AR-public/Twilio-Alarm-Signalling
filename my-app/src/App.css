@@ -1,1 +1,329 @@
-@import "tailwindcss";
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Container */
+.alarm-container {
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #fff7ed, #fee2e2, #fff7ed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.alarm-wrapper {
+  width: 100%;
+  max-width: 48rem;
+}
+
+/* Header */
+.alarm-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.alarm-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.alarm-subtitle {
+  color: #4b5563;
+  font-size: 0.875rem;
+}
+
+/* Main Card */
+.alarm-card {
+  background: white;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.alarm-card-content {
+  padding: 2.5rem;
+}
+
+/* Idle State */
+.idle-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.idle-text {
+  color: #4b5563;
+  margin-bottom: 2rem;
+  font-size: 1.125rem;
+  text-align: center;
+}
+
+.trigger-button {
+  background: linear-gradient(to right, #f97316, #ef4444);
+  color: white;
+  font-weight: 700;
+  font-size: 1.5rem;
+  padding: 1.25rem 4rem;
+  border-radius: 1rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+.trigger-button:hover:not(:disabled) {
+  background: linear-gradient(to right, #ea580c, #dc2626);
+  transform: scale(1.05);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.trigger-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Triggered State */
+.triggered-state {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Status Section */
+.status-section {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.alarm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  color: white;
+  font-weight: 700;
+  font-size: 1.5rem;
+  padding: 1rem 2.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.alarm-icon {
+  margin-right: 0.75rem;
+  font-size: 1.5rem;
+}
+
+.timer-box {
+  background: #f9fafb;
+  border-radius: 1rem;
+  padding: 1.5rem 2rem;
+  display: inline-block;
+}
+
+.timer-label {
+  color: #4b5563;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.timer-display {
+  font-size: 3rem;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  color: #1f2937;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Alert Status Section */
+.alert-status-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  padding: 0 0.25rem;
+}
+
+.table-container {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.alert-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.alert-table thead {
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.alert-table th {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.alert-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
+}
+
+.alert-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.alert-table tbody tr.active {
+  background: white;
+}
+
+.alert-table tbody tr.active:hover {
+  background: #f9fafb;
+}
+
+.alert-table tbody tr.inactive {
+  background: #f9fafb;
+}
+
+.alert-table td {
+  padding: 1rem 1.5rem;
+}
+
+.alertee-name {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.alertee-name.inactive {
+  color: #9ca3af;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-badge.acknowledged {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.waiting {
+  background: #fed7aa;
+  color: #c2410c;
+}
+
+.status-badge-icon {
+  margin-right: 0.375rem;
+}
+
+.status-inactive {
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+/* Reset Button */
+.reset-section {
+  display: flex;
+  justify-content: center;
+  padding-top: 1rem;
+}
+
+.reset-button {
+  background: #4b5563;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.75rem 2.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.reset-button:hover {
+  background: #374151;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  transform: scale(1.05);
+}
+
+/* Footer */
+.alarm-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  color: #4b5563;
+  font-size: 0.875rem;
+}
+
+/* Responsive Design */
+@media (min-width: 640px) {
+  .alarm-container {
+    padding: 1.5rem;
+  }
+  
+  .alarm-title {
+    font-size: 3rem;
+  }
+  
+  .alarm-subtitle {
+    font-size: 1rem;
+  }
+  
+  .alarm-card-content {
+    padding: 2rem;
+  }
+  
+  .alarm-badge {
+    font-size: 1.5rem;
+  }
+  
+  .trigger-button {
+    font-size: 1.5rem;
+  }
+  
+  .reset-button {
+    font-size: 1.125rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .alarm-container {
+    padding: 2rem;
+  }
+  
+  .alarm-card-content {
+    padding: 2.5rem;
+  }
+}

@@ -30,7 +30,7 @@ function App() {
   ]);
 
   const client = new Client()
-    .setEndpoint('https://fra.cloud.appwrite.io/v1') // Your API Endpoint
+    .setEndpoint('https://fra.cloud.appwrite.io/v1') // Appwrite Project Endpoint
     .setProject('69162129001603cdec51'); // Project ID
 
   const databases = new Databases(client);
@@ -40,20 +40,18 @@ function App() {
     const result = await databases.listDocuments({
       databaseId: '69315e3800250c261f77',
       collectionId: 'responses_table',
-      queries: [Query.createdAfter(timeAlarmTriggered)], // optional
-      // transactionId: '<TRANSACTION_ID>', // optional
-      total: false, // optional
+      queries: [Query.createdAfter(timeAlarmTriggered)],
+      total: false,
     });
 
-    console.log("All database values after alarm triggered:", result);
+    console.log('All database values after alarm triggered:', result);
     const allResponsesSinceAlarmTriggered = result.documents;
 
-    // if any object in allResponsesSinceAlarmTriggered has response 'YES', update alertees response state to 'YES'
     allResponsesSinceAlarmTriggered.forEach((doc) => {
       if (doc.response === 'YES') {
         setAlertees((prevAlertees) =>
           prevAlertees.map((alertee) =>
-            alertee.phone === doc.phone //this confirms the right alertee state is updated
+            alertee.phone === doc.phone
               ? { ...alertee, response: 'YES' }
               : alertee
           )
@@ -62,7 +60,6 @@ function App() {
     });
   }
 
-  // Timer effect
   useEffect(() => {
     let interval = null;
 
@@ -77,7 +74,6 @@ function App() {
     };
   }, [isAlarmTriggered]);
 
-  // Poll DB responses every 3 seconds while the alarm is active
   useEffect(() => {
     if (!isAlarmTriggered || !timeAlarmTriggered) return;
 
@@ -87,8 +83,6 @@ function App() {
       try {
         const result = await getDbResponses();
         if (isCancelled) return;
-
-        // Update local state as needed based on result
         console.log('Polled responses:', result);
       } catch (err) {
         console.error('Polling getDbResponses failed:', err);
@@ -102,28 +96,25 @@ function App() {
       isCancelled = true;
       clearInterval(intervalId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAlarmTriggered, timeAlarmTriggered]);
 
   const triggerAppwriteFunction = async (alertee: Alertee) => {
     try {
-      // Prepare the request body with override parameters
       const requestBody = JSON.stringify({
         to: alertee.phone,
       });
 
-      // Execute the Appwrite function
       const execution = await functions.createExecution(
         ALARM_FUNCTION_ID,
         requestBody,
-        false, // false = async execution
-        '/', // path
-        ExecutionMethod.POST // HTTP method
+        false,
+        '/',
+        ExecutionMethod.POST
       );
 
       console.log('Function execution response:', execution);
 
-      // Check if the execution was successful
       if (execution.responseStatusCode === 200) {
         console.log(`SMS sent successfully to ${alertee.name}`);
         return { success: true, execution };
@@ -146,7 +137,6 @@ function App() {
     setIsSending(true);
     setTimeAlarmTriggered(new Date().toISOString());
 
-    // Reset alertees
     setAlertees((prev) =>
       prev.map((alertee) => ({
         ...alertee,
@@ -155,11 +145,9 @@ function App() {
       }))
     );
 
-    // Send SMS to all active alertees
     const activeAlertees = alertees.filter((a) => a.activationDelay === 0);
 
     try {
-      // Send SMS in parallel to all active alertees
       const results = await Promise.allSettled(
         activeAlertees.map((alertee) => triggerAppwriteFunction(alertee))
       );
@@ -201,113 +189,121 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-8">
-      <div className="max-w-2xl w-full">
-        <h1 className="text-5xl font-bold text-center mb-12 text-gray-800">
-          Alarm Signalling App
-        </h1>
+    <div className="alarm-container">
+      <div className="alarm-wrapper">
+        <div className="alarm-header">
+          <h1 className="alarm-title">Alarm Signalling App</h1>
+          <p className="alarm-subtitle">Emergency alert system</p>
+        </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="flex flex-col items-center gap-6">
+        <div className="alarm-card">
+          <div className="alarm-card-content">
             {!isAlarmTriggered ? (
-              <>
+              <div className="idle-state">
+                <div>
+                  <p className="idle-text">
+                    Press the button below to trigger the alarm
+                  </p>
+                </div>
                 <button
                   onClick={handleTriggerAlarm}
                   disabled={isSending}
-                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-2xl py-6 px-12 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="trigger-button"
                 >
                   {isSending ? 'Sending...' : 'Trigger Alarm'}
                 </button>
-              </>
+              </div>
             ) : (
-              <>
-                <div className="text-center animate-fade-in">
-                  <button
-                    disabled
-                    className="bg-red-500 text-white font-bold text-2xl py-6 px-12 rounded-xl shadow-lg mb-4"
-                  >
+              <div className="triggered-state">
+                <div className="status-section">
+                  <div className="alarm-badge">
+                    <span className="alarm-icon">🚨</span>
                     Alarm Triggered!
-                  </button>
-
-                  <div className="text-3xl font-mono font-bold text-gray-700 mb-4">
-                    Time Since Alarm: {formatTime(timeElapsed)}
                   </div>
 
-                  <button
-                    onClick={handleResetAlarm}
-                    className="bg-gray-600 hover:bg-gray-700 text-white font-bold text-lg py-3 px-8 rounded-lg shadow transition-all duration-300"
-                  >
+                  <div className="timer-box">
+                    <p className="timer-label">Time Elapsed</p>
+                    <div className="timer-display">
+                      {formatTime(timeElapsed)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="alert-status-section">
+                  <h2 className="section-title">Alert Status</h2>
+                  <div className="table-container">
+                    <table className="alert-table">
+                      <thead>
+                        <tr>
+                          <th>Alertee</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {alertees.map((alertee) => (
+                          <tr
+                            key={alertee.name}
+                            className={alertee.isActive ? 'active' : 'inactive'}
+                          >
+                            <td>
+                              <span
+                                className={`alertee-name ${
+                                  alertee.isActive ? '' : 'inactive'
+                                }`}
+                              >
+                                {alertee.name}
+                              </span>
+                            </td>
+                            <td>
+                              {alertee.isActive ? (
+                                <span
+                                  className={`status-badge ${
+                                    alertee.response === 'YES'
+                                      ? 'acknowledged'
+                                      : 'waiting'
+                                  }`}
+                                >
+                                  {alertee.response === 'YES' ? (
+                                    <>
+                                      <span className="status-badge-icon">
+                                        ✓
+                                      </span>
+                                      Acknowledged
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="status-badge-icon">
+                                        ⏳
+                                      </span>
+                                      Waiting
+                                    </>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="status-inactive">
+                                  Inactive
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="reset-section">
+                  <button onClick={handleResetAlarm} className="reset-button">
                     Reset Alarm
                   </button>
                 </div>
-
-                <div className="w-full mt-6 animate-fade-in">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="border border-gray-300 px-6 py-3 text-left font-bold text-gray-700">
-                          Alertees
-                        </th>
-                        <th className="border border-gray-300 px-6 py-3 text-left font-bold text-gray-700">
-                          Acknowledged
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {alertees.map((alertee) => (
-                        <tr
-                          key={alertee.name}
-                          className={`${
-                            alertee.isActive ? 'bg-white' : 'bg-gray-50'
-                          } transition-all duration-500`}
-                        >
-                          <td
-                            className={`border border-gray-300 px-6 py-4 ${
-                              alertee.isActive
-                                ? 'text-gray-800 font-medium'
-                                : 'text-gray-400'
-                            }`}
-                          >
-                            {alertee.name}
-                          </td>
-                          <td
-                            className={`border border-gray-300 px-6 py-4 font-bold ${
-                              alertee.isActive
-                                ? alertee.response === 'YES'
-                                  ? 'text-green-600'
-                                  : 'text-orange-600'
-                                : 'text-gray-400'
-                            }`}
-                          >
-                            {alertee.isActive ? alertee.response : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+              </div>
             )}
           </div>
         </div>
+
+        <div className="alarm-footer">Happy Fuel Co 🔥😇</div>
       </div>
-
-      <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
