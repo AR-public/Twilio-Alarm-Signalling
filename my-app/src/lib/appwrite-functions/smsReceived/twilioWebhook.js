@@ -1,53 +1,47 @@
 /**
- * Appwrite Function to receive SMS responses from Twilio
- * This webhook receives incoming SMS and stores them in Appwrite Database
+ * Appwrite Function: Twilio SMS Webhook (store replies)
+ * ESM + Appwrite context API
  */
+import { Client, Databases, ID } from 'node-appwrite';
 
-import { Client, Databases } from 'node-appwrite';
-
-export default async function (req, res) {
+export default async function ({ req, res, log, error }) {
   try {
-    // Parse Twilio's form-encoded webhook data
-    const contentType = req.headers['content-type'] || '';
-    let twilioData = {};
-
-    if (contentType.includes('application/x-www-form-urlencoded')) {
-      // Parse URL-encoded body
-      const body = req.body || '';
-      const params = new URLSearchParams(body);
-
-      twilioData = {
-        from: params.get('From'),
-        to: params.get('To'),
-        body: params.get('Body'),
-        messageSid: params.get('MessageSid'),
-        timestamp: new Date().toISOString(),
-      };
-    } else {
+    // Twilio sends application/x-www-form-urlencoded
+    const contentType = (req.headers?.['content-type'] || '').toLowerCase();
+    if (!contentType.includes('application/x-www-form-urlencoded')) {
       return res.json({ error: 'Invalid content type' }, 400);
     }
 
-    console.log('Received SMS:', twilioData);
+    // Parse body (use req.bodyText per Appwrite docs)
+    const params = new URLSearchParams(req.bodyText || '');
 
-    // Initialise Appwrite client
+    const twilioData = {
+      from: params.get('From'),
+      to: params.get('To'),
+      body: params.get('Body'),
+      messageSid: params.get('MessageSid'),
+      timestamp: new Date().toISOString(),
+    };
+
+    log?.(`Received SMS: ${JSON.stringify(twilioData)}`);
+
+    // Init Appwrite client with env vars injected by Functions
     const client = new Client()
-      .setEndpoint('https://fra.cloud.appwrite.io/v1')
-      .setProject('69162129001603cdec51')
-      .setKey(process.env.APPWRITE_API_KEY);
+      .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT) // Appwrite Function Endpoint
+      .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID) // Appwrite Project ID
+      .setKey(process.env.APPWRITE_API_KEY); // Appwrite API Key
 
-    const database = new Databases(client);
+    const databases = new Databases(client);
 
-    // Store the response in Appwrite database
     const databaseId = process.env.DATABASE_ID;
     const collectionId = process.env.RESPONSES_COLLECTION_ID;
 
-    // Normalize the response (convert to uppercase, trim)
     const normalizedResponse = (twilioData.body || '').trim().toUpperCase();
 
-    await database.createDocument(
+    await databases.createDocument(
       databaseId,
       collectionId,
-      'unique()', // Auto-generate ID
+      ID.unique(),
       {
         phone: twilioData.from,
         response: normalizedResponse,
@@ -58,18 +52,15 @@ export default async function (req, res) {
       }
     );
 
-    // Respond to Twilio with TwiML (optional - sends confirmation SMS)
+    // TwiML confirmation
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Message>Thank you for your response.</Message>
 </Response>`;
 
-    return res.send(twimlResponse, 200, {
-      'Content-Type': 'text/xml',
-    });
-
+    return res.text(twimlResponse, 200, { 'Content-Type': 'text/xml' });
   } catch (err) {
-    console.error('Webhook error:', err);
+    error?.(err);
     return res.json(
       {
         error: 'Failed to process webhook',
@@ -78,4 +69,4 @@ export default async function (req, res) {
       500
     );
   }
-};
+}
