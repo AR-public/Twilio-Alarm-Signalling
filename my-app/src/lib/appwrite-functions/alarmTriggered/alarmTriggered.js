@@ -3,12 +3,12 @@
  * This function sends an SMS via Twilio when triggered.
  */
 
-const { URLSearchParams } = require('url');
-const https = require('https');
+import { URLSearchParams } from 'url';
+import https from 'https';
 
-module.exports = async function (req, res) {
+export default async function ({ req, res, log, error }) {
   try {
-    // Load defaults from environment variables
+    // Environment variables (Appwrite exposes process.env)
     const {
       TWILIO_ACCOUNT_SID,
       TWILIO_AUTH_TOKEN,
@@ -25,21 +25,22 @@ module.exports = async function (req, res) {
       );
     }
 
-    // Allow runtime overrides via request body (JSON)
+    // Prefer req.bodyJson when available (parsed JSON provided by Appwrite).
+    // Fallbacks keep backward compat with older runtimes.
     let overrides = {};
-    try {
-      if (req.body) {
-        overrides = JSON.parse(req.body);
-      }
-    } catch (parseErr) {
-      // Ignore parse errors; continue with env defaults
+    if (req?.bodyJson && typeof req.bodyJson === 'object') {
+      overrides = req.bodyJson;
+    } else if (req?.bodyText) {
+      try { overrides = JSON.parse(req.bodyText); } catch { /* ignore */ }
+    } else if (req?.body) { // in some older templates body may be raw
+      try { overrides = JSON.parse(req.body); } catch { /* ignore */ }
     }
 
-    const to = overrides.to || TWILIO_TO;
-    const from = overrides.from || TWILIO_FROM;
+    const to = overrides.to ?? TWILIO_TO;
+    const from = overrides.from ?? TWILIO_FROM;
     const body =
-      overrides.body ||
-      ALARM_MESSAGE ||
+      overrides.body ??
+      ALARM_MESSAGE ??
       "TEST: Alarm Triggered. Reply 'YES' to acknowledge you have read this message.";
 
     if (!to || !from) {
@@ -74,19 +75,17 @@ module.exports = async function (req, res) {
         'Content-Length': Buffer.byteLength(payload),
         Authorization: `Basic ${basicAuth}`,
       },
-      // Keep-alive agent to be friendly in serverless contexts
       agent: new https.Agent({ keepAlive: true }),
     };
 
     const twilioResponse = await sendHttpsRequest(options, payload);
 
-    // If Twilio returns an error (non-2xx), propagate it
     if (twilioResponse.statusCode < 200 || twilioResponse.statusCode >= 300) {
       return res.json(
         {
           error: 'Twilio API call failed',
           statusCode: twilioResponse.statusCode,
-          body: safeJsonParse(twilioResponse.body) || twilioResponse.body,
+          body: safeJsonParse(twilioResponse.body) ?? twilioResponse.body,
         },
         twilioResponse.statusCode
       );
@@ -96,25 +95,22 @@ module.exports = async function (req, res) {
     return res.json(
       {
         message: 'SMS sent successfully via Twilio.',
-        twilio: safeJsonParse(twilioResponse.body) || twilioResponse.body,
+        twilio: safeJsonParse(twilioResponse.body) ?? twilioResponse.body,
       },
       200
     );
   } catch (err) {
-    // Unexpected failure
+    error?.(err); // log to Appwrite
     return res.json(
       {
         error: 'Unexpected error while sending SMS.',
-        details: err?.message || String(err),
+        details: err?.message ?? String(err),
       },
       500
     );
   }
-};
+}
 
-/**
- * Helper: Perform HTTPS request and return { statusCode, headers, body }
- */
 function sendHttpsRequest(options, payload) {
   return new Promise((resolve, reject) => {
     const req = https.request(options, (resp) => {
@@ -135,9 +131,6 @@ function sendHttpsRequest(options, payload) {
   });
 }
 
-/**
- * Helper: Parse JSON safely
- */
 function safeJsonParse(str) {
   try {
     return JSON.parse(str);
