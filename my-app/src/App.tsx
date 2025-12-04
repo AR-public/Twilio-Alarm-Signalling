@@ -200,7 +200,7 @@ function App() {
     <div className="alarm-container">
       <div className="alarm-wrapper">
         <div className="alarm-header">
-          <h1 className="alarm-title">Alarm Signalling App</h1>
+          <h1 className="alarm-title">Alarm Dashboard</h1>
           <p className="alarm-subtitle">Emergency alert system</p>
         </div>
 
