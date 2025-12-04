@@ -1,42 +1,14 @@
 /**
  * Appwrite Function (Node.js) entry point
- * Sends an SMS via Twilio when triggered.
+ * This function sends an SMS via Twilio when triggered.
  */
 
 import { URLSearchParams } from 'url';
 import https from 'https';
 
-const ORIGIN = 'https://alarm-dashboard.netlify.app/';
-
-function corsHeaders(req) {
-  // Echo requested headers if present to satisfy stricter preflights
-  const requested = req?.headers?.['access-control-request-headers'];
-  return {
-    'Access-Control-Allow-Origin': ORIGIN,
-    'Access-Control-Allow-Methods': 'POST',
-    'Access-Control-Allow-Headers': requested || 'Content-Type, Authorization',
-    'Access-Control-Max-Age': '600',
-  };
-}
-
 export default async function ({ req, res, log, error }) {
-  // 1) Handle preflight early.
-  if (req.method === 'OPTIONS') {
-    return res.send('', 204, corsHeaders(req));
-  }
-
-  // 2) Handle simple POST route (JSON "ok" or error) — keep CORS headers.
-  if (req.method === 'POST') {
-    try {
-      return res.json({ ok: true }, 200, corsHeaders(req));
-    } catch (e) {
-      error?.(e);
-      return res.json({ error: 'Internal Server Error' }, 500, corsHeaders(req));
-    }
-  }
-
-  // 3) Default path: perform Twilio call (also CORS-protected).
   try {
+    // Environment variables (Appwrite exposes process.env)
     const {
       TWILIO_ACCOUNT_SID,
       TWILIO_AUTH_TOKEN,
@@ -49,18 +21,18 @@ export default async function ({ req, res, log, error }) {
     if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
       return res.json(
         { error: 'Missing Twilio credentials in environment variables.' },
-        500,
-        corsHeaders(req)
+        500
       );
     }
 
-    // Parse overrides
+    // Prefer req.bodyJson when available (parsed JSON provided by Appwrite).
+    // Fallbacks keep backward compat with older runtimes.
     let overrides = {};
     if (req?.bodyJson && typeof req.bodyJson === 'object') {
       overrides = req.bodyJson;
     } else if (req?.bodyText) {
       try { overrides = JSON.parse(req.bodyText); } catch { /* ignore */ }
-    } else if (req?.body) {
+    } else if (req?.body) { // in some older templates body may be raw
       try { overrides = JSON.parse(req.body); } catch { /* ignore */ }
     }
 
@@ -74,8 +46,7 @@ export default async function ({ req, res, log, error }) {
     if (!to || !from) {
       return res.json(
         { error: 'Missing "to" or "from" number (env or request body).' },
-        400,
-        corsHeaders(req)
+        400
       );
     }
 
@@ -86,8 +57,10 @@ export default async function ({ req, res, log, error }) {
     form.append('Body', body);
     const payload = form.toString();
 
-    // Twilio API endpoint and auth
+    // Twilio API endpoint
     const path = `/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+
+    // Basic Auth header
     const basicAuth = Buffer.from(
       `${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`
     ).toString('base64');
@@ -114,8 +87,7 @@ export default async function ({ req, res, log, error }) {
           statusCode: twilioResponse.statusCode,
           body: safeJsonParse(twilioResponse.body) ?? twilioResponse.body,
         },
-        twilioResponse.statusCode,
-        corsHeaders(req)
+        twilioResponse.statusCode
       );
     }
 
@@ -125,18 +97,16 @@ export default async function ({ req, res, log, error }) {
         message: 'SMS sent successfully via Twilio.',
         twilio: safeJsonParse(twilioResponse.body) ?? twilioResponse.body,
       },
-      200,
-      corsHeaders(req)
+      200
     );
   } catch (err) {
-    error?.(err);
+    error?.(err); // log to Appwrite
     return res.json(
       {
         error: 'Unexpected error while sending SMS.',
         details: err?.message ?? String(err),
       },
-      500,
-      corsHeaders(req)
+      500
     );
   }
 }
