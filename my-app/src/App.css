@@ -45,6 +45,11 @@ body {
   font-size: 0.875rem;
 }
 
+/* Content Wrapper for Main Card and Floating Messages */
+.alarm-content-wrapper {
+  position: relative;
+}
+
 /* Main Card */
 .alarm-card {
   background: white;
@@ -279,6 +284,63 @@ body {
   transform: scale(1.05);
 }
 
+/* Floating Messages Container */
+.floating-messages-container {
+  display: none; /* Hidden on mobile */
+  position: absolute;
+  right: -220px; /* Position to the right of the main card */
+  top: 100px; /* Start position */
+  width: 200px;
+  pointer-events: none; /* Allow clicks to pass through */
+  z-index: 10;
+}
+
+/* Individual Floating Message */
+.floating-message {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  animation: floatUpWave 4s ease-out forwards;
+  opacity: 0;
+  margin-bottom: 0.5rem;
+}
+
+/* Floating Animation with Wave Motion */
+@keyframes floatUpWave {
+  0% {
+    opacity: 0;
+    transform: translateY(0) translateX(0);
+  }
+  10% {
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(-60px) translateX(8px);
+  }
+  50% {
+    transform: translateY(-120px) translateX(-4px);
+  }
+  75% {
+    transform: translateY(-180px) translateX(6px);
+    opacity: 0.8;
+  }
+  85% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-240px) translateX(0);
+  }
+}
+
 /* Footer */
 .alarm-footer {
   text-align: center;
@@ -315,6 +377,11 @@ body {
   
   .reset-button {
     font-size: 1.125rem;
+  }
+
+  /* Show floating messages on wider screens */
+  .floating-messages-container {
+    display: block;
   }
 }
 

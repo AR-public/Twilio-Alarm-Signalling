@@ -12,6 +12,12 @@ interface Alertee {
   response: 'WAITING' | 'YES';
 }
 
+interface FloatingMessage {
+  id: string;
+  text: string;
+  phone: string;
+}
+
 function App() {
   const [isAlarmTriggered, setIsAlarmTriggered] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
@@ -28,6 +34,10 @@ function App() {
       response: 'WAITING',
     },
   ]);
+  const [floatingMessages, setFloatingMessages] = useState<FloatingMessage[]>(
+    []
+  );
+  const [, setShownMessageIds] = useState<Set<string>>(new Set());
 
   const client = new Client()
     .setEndpoint('https://fra.cloud.appwrite.io/v1') // Appwrite Project Endpoint
@@ -37,6 +47,7 @@ function App() {
 
   async function getDbResponses() {
     console.log('inside getDbResponses at:', timeAlarmTriggered);
+    console.log("alertees state:", alertees);
     const result = await databases.listDocuments({
       databaseId: '69315e3800250c261f77',
       collectionId: 'responses_table',
@@ -48,7 +59,7 @@ function App() {
     const allResponsesSinceAlarmTriggered = result.documents;
 
     allResponsesSinceAlarmTriggered.forEach((doc) => {
-      if (doc.response === 'YES') {
+      if (doc.response.toLowerCase().trim() === 'yes') {
         setAlertees((prevAlertees) =>
           prevAlertees.map((alertee) =>
             alertee.phone === doc.phone
@@ -56,6 +67,39 @@ function App() {
               : alertee
           )
         );
+      } else {
+        // Add non-YES responses as floating messages
+        const messageId = `${doc.phone}-${doc.$createdAt}-${doc.response}`;
+
+        // Only show if we haven't shown this message before
+        setShownMessageIds((prevShown) => {
+          if (prevShown.has(messageId)) {
+            return prevShown;
+          }
+
+          // Add to shown messages
+          const newShown = new Set(prevShown);
+          newShown.add(messageId);
+
+          // Add to floating messages for display
+          setFloatingMessages((prev) => [
+            ...prev,
+            {
+              id: messageId,
+              text: doc.response,
+              phone: doc.phone,
+            },
+          ]);
+
+          // Remove message after animation completes (4 seconds)
+          setTimeout(() => {
+            setFloatingMessages((prev) =>
+              prev.filter((msg) => msg.id !== messageId)
+            );
+          }, 4000);
+
+          return newShown;
+        });
       }
     });
   }
@@ -144,6 +188,7 @@ function App() {
     setTimeElapsed(0);
     setIsSending(true);
     setTimeAlarmTriggered(new Date().toISOString());
+    setFloatingMessages([]); // Clear any previous messages
 
     setAlertees((prev) =>
       prev.map((alertee) => ({
@@ -179,6 +224,7 @@ function App() {
   const handleResetAlarm = async () => {
     setIsAlarmTriggered(false);
     setTimeElapsed(0);
+    setFloatingMessages([]); // Clear messages
     setAlertees((prev) =>
       prev.map((alertee) => ({
         ...alertee,
@@ -204,113 +250,126 @@ function App() {
           <p className="alarm-subtitle">Emergency alert system</p>
         </div>
 
-        <div className="alarm-card">
-          <div className="alarm-card-content">
-            {!isAlarmTriggered ? (
-              <div className="idle-state">
-                <div>
-                  <p className="idle-text">
-                    Press the button below to trigger the alarm
-                  </p>
-                </div>
-                <button
-                  onClick={handleTriggerAlarm}
-                  disabled={isSending}
-                  className="trigger-button"
-                >
-                  {isSending ? 'Sending...' : 'Trigger Alarm'}
-                </button>
-              </div>
-            ) : (
-              <div className="triggered-state">
-                <div className="status-section">
-                  <div className="alarm-badge">
-                    <span className="alarm-icon">🚨</span>
-                    Alarm Triggered!
+        <div className="alarm-content-wrapper">
+          <div className="alarm-card">
+            <div className="alarm-card-content">
+              {!isAlarmTriggered ? (
+                <div className="idle-state">
+                  <div>
+                    <p className="idle-text">
+                      Press the button below to trigger the alarm
+                    </p>
                   </div>
-
-                  <div className="timer-box">
-                    <p className="timer-label">Time Elapsed</p>
-                    <div className="timer-display">
-                      {formatTime(timeElapsed)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="alert-status-section">
-                  <h2 className="section-title">Alert Status</h2>
-                  <div className="table-container">
-                    <table className="alert-table">
-                      <thead>
-                        <tr>
-                          <th>Alertee</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {alertees.map((alertee) => (
-                          <tr
-                            key={alertee.name}
-                            className={alertee.isActive ? 'active' : 'inactive'}
-                          >
-                            <td>
-                              <span
-                                className={`alertee-name ${
-                                  alertee.isActive ? '' : 'inactive'
-                                }`}
-                              >
-                                {alertee.name}
-                              </span>
-                            </td>
-                            <td>
-                              {alertee.isActive ? (
-                                <span
-                                  className={`status-badge ${
-                                    alertee.response === 'YES'
-                                      ? 'acknowledged'
-                                      : 'waiting'
-                                  }`}
-                                >
-                                  {alertee.response === 'YES' ? (
-                                    <>
-                                      <span className="status-badge-icon">
-                                        ✓
-                                      </span>
-                                      Acknowledged
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="status-badge-icon">
-                                        ⏳
-                                      </span>
-                                      Waiting
-                                    </>
-                                  )}
-                                </span>
-                              ) : (
-                                <span className="status-inactive">
-                                  Inactive
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="reset-section">
-                  <button onClick={handleResetAlarm} className="reset-button">
-                    Reset Alarm
+                  <button
+                    onClick={handleTriggerAlarm}
+                    disabled={isSending}
+                    className="trigger-button"
+                  >
+                    {isSending ? 'Sending...' : 'Trigger Alarm'}
                   </button>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="triggered-state">
+                  <div className="status-section">
+                    <div className="alarm-badge">
+                      <span className="alarm-icon">🚨</span>
+                      Alarm Triggered!
+                    </div>
+
+                    <div className="timer-box">
+                      <p className="timer-label">Time Elapsed</p>
+                      <div className="timer-display">
+                        {formatTime(timeElapsed)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="alert-status-section">
+                    <h2 className="section-title">Alert Status</h2>
+                    <div className="table-container">
+                      <table className="alert-table">
+                        <thead>
+                          <tr>
+                            <th>Alertee</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {alertees.map((alertee) => (
+                            <tr
+                              key={alertee.name}
+                              className={
+                                alertee.isActive ? 'active' : 'inactive'
+                              }
+                            >
+                              <td>
+                                <span
+                                  className={`alertee-name ${
+                                    alertee.isActive ? '' : 'inactive'
+                                  }`}
+                                >
+                                  {alertee.name}
+                                </span>
+                              </td>
+                              <td>
+                                {alertee.isActive ? (
+                                  <span
+                                    className={`status-badge ${
+                                      alertee.response === 'YES'
+                                        ? 'acknowledged'
+                                        : 'waiting'
+                                    }`}
+                                  >
+                                    {alertee.response === 'YES' ? (
+                                      <>
+                                        <span className="status-badge-icon">
+                                          ✓
+                                        </span>
+                                        Acknowledged
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="status-badge-icon">
+                                          ⏳
+                                        </span>
+                                        Waiting
+                                      </>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="status-inactive">
+                                    Inactive
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="reset-section">
+                    <button onClick={handleResetAlarm} className="reset-button">
+                      Reset Alarm
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Floating Messages Container */}
+          {isAlarmTriggered && floatingMessages.length > 0 && (
+            <div className="floating-messages-container">
+              <div key={floatingMessages[0].id} className="floating-message">
+                {floatingMessages[0].text}
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="alarm-footer">The Happy Fuel Co 🔥😇</div>
+        <div className="alarm-footer">Happy Fuel Co 🔥😇</div>
       </div>
     </div>
   );
